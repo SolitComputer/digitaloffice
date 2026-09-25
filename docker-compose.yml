@@ -1,0 +1,18 @@
+services:
+  mariadb:
+    image: mariadb:11.4
+    container_name: digitaloffice-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: root_dev_only
+      MARIADB_DATABASE: digitaloffice
+      MARIADB_USER: do_app
+      MARIADB_PASSWORD: do_app_dev_only
+    ports:
+      - "3307:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+volumes:
+  mariadb_data:
