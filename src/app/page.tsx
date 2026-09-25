@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,7 +19,9 @@ export default function HomePage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex gap-3">
-          <Button>Masuk</Button>
+          <Button asChild>
+            <Link href="/login">Masuk</Link>
+          </Button>
           <Button variant="outline">Pelajari</Button>
         </CardContent>
       </Card>
