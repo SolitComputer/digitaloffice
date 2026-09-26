@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -19,6 +18,7 @@ import { requireSuperAdmin } from "@/modules/auth/session";
 import { TenantStatusBadge } from "@/modules/platform/components/tenant-status-badge";
 import { TenantStatusButton } from "@/modules/platform/components/tenant-status-button";
 import { listTenants } from "@/modules/platform/queries";
+import { CreateTenantDialog } from "@/modules/platform/components/create-tenant-dialog";
 
 export const metadata: Metadata = {
   title: "Daftar Toko | DigitalOffice",
@@ -42,7 +42,6 @@ export default async function TenantListPage({ searchParams }: TenantListPagePro
   const params = await searchParams;
   const query = readParam(params.q).trim().slice(0, 100);
   const page = Math.max(1, Number.parseInt(readParam(params.page), 10) || 1);
-  const createdSlug = readParam(params.dibuat);
 
   const { rows, totalCount, totalPages } = await listTenants({ query, page });
 
@@ -51,21 +50,8 @@ export default async function TenantListPage({ searchParams }: TenantListPagePro
       <PageHeader
         title="Daftar Toko"
         description={`${formatNumber(totalCount)} toko terdaftar`}
-        actions={
-          <Button asChild>
-            <Link href="/admin/toko/baru">
-              <Plus className="size-4" />
-              Tambah Toko
-            </Link>
-          </Button>
-        }
+        actions={<CreateTenantDialog />}
       />
-
-      {createdSlug ? (
-        <div role="status" className="mb-4 rounded-md border bg-background px-4 py-3 text-sm">
-          Toko <span className="font-medium">{createdSlug}</span> berhasil dibuat.
-        </div>
-      ) : null}
 
       <form className="mb-4 flex max-w-md gap-2">
         <Input name="q" defaultValue={query} placeholder="Cari nama atau slug toko..." />

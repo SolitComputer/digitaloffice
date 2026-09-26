@@ -20,7 +20,7 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
       title={tenant.tenantName}
       subtitle={ROLE_LABELS[tenant.role]}
       userName={session.user.name}
-      items={getTenantNav(tenant.tenantSlug)}
+      items={getTenantNav(tenant.tenantSlug, tenant.role)}
       userActions={<SignOutButton />}
     >
       {children}

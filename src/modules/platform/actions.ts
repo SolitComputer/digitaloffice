@@ -2,7 +2,6 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
 import { accounts, tenantMembers, tenants, users } from "@/db/schema";
@@ -35,6 +34,7 @@ export type CreateTenantState = {
   error: string | null;
   fieldErrors: Record<string, string>;
   values: CreateTenantValues;
+  successMessage?: string;
 };
 
 function readField(formData: FormData, key: string): string {
@@ -101,7 +101,12 @@ export async function createTenantAction(
   }
 
   revalidatePath("/admin", "layout");
-  redirect(`/admin/toko?dibuat=${encodeURIComponent(data.slug)}`);
+  return {
+    error: null,
+    fieldErrors: {},
+    values: { tenantName: "", slug: "", ownerName: "", ownerEmail: "" },
+    successMessage: `Toko ${data.tenantName} berhasil dibuat.`,
+  };
 }
 
 const statusSchema = z.object({
