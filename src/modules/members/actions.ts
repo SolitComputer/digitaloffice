@@ -8,8 +8,14 @@ import { db } from "@/db";
 import { accounts, TENANT_ROLES, tenantMembers, users, type TenantRole } from "@/db/schema";
 import { isDuplicateEntryError } from "@/lib/db-errors";
 import type { MemberMessageCode } from "@/modules/members/messages";
-import { requireTenant } from "@/modules/tenants/context";
-import { canManageMembers } from "@/modules/tenants/permissions";
+import { requireTenant, type TenantContext } from "@/modules/tenants/context";
+import {
+    canManageMembers,
+    canManagePermissions,
+    sanitizePermissions,
+    serializePermissions,
+} from "@/modules/tenants/permissions";
+import { canManageRole } from "@/modules/tenants/roles";
 import { buildCredentialUserRows } from "@/modules/users/credential";
 
 const createMemberSchema = z.object({
@@ -51,10 +57,13 @@ function membersPath(slug: string, message?: MemberMessageCode): string {
 }
 
 async function changeMembership(
-    tenantId: string,
+    actor: Pick<TenantContext, "tenantId" | "role">,
     userId: string,
     nextRole: TenantRole | null,
 ): Promise<MemberMessageCode> {
+    const { tenantId } = actor;
+    if (nextRole && !canManageRole(actor.role, nextRole)) return "role-lebih-tinggi";
+
     return db.transaction(async (tx): Promise<MemberMessageCode> => {
         const owners = await tx
             .select({ userId: tenantMembers.userId })
@@ -70,6 +79,7 @@ async function changeMembership(
             .for("update");
 
         if (!target) return "tidak-ditemukan";
+        if (!canManageRole(actor.role, target.role)) return "role-lebih-tinggi";
 
         const losesOwnerRole = target.role === "OWNER" && nextRole !== "OWNER";
         if (losesOwnerRole && owners.length <= 1) return "owner-terakhir";
@@ -79,7 +89,7 @@ async function changeMembership(
             return "dicabut";
         }
 
-        await tx.update(tenantMembers).set({ role: nextRole }).where(memberFilter);
+        await tx.update(tenantMembers).set({ role: nextRole, permissions: null }).where(memberFilter);
         return "role-diubah";
     });
 }
@@ -95,7 +105,7 @@ export async function createMemberAction(
         role: readField(formData, "role"),
     };
 
-    if (!canManageMembers(tenant.role)) {
+    if (!canManageMembers(tenant)) {
         return { error: "Anda tidak punya akses untuk menambah pengguna.", fieldErrors: {}, values };
     }
 
@@ -114,7 +124,11 @@ export async function createMemberAction(
     }
 
     const data = parsed.data;
-    const emailTakenError = { error: null, fieldErrors: { email: "Email sudah terdaftar di DigitalOffice" }, values };
+    if (!canManageRole(tenant.role, data.role)) {
+        return { error: null, fieldErrors: { role: "Anda tidak bisa memberi role yang lebih tinggi dari role Anda" }, values };
+    }
+
+    const emailTakenError ={ error: null, fieldErrors: { email: "Email sudah terdaftar di DigitalOffice" }, values };
 
     const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, data.email)).limit(1);
     if (existing) return emailTakenError;
@@ -151,7 +165,7 @@ export async function createMemberAction(
 
 export async function updateMemberRoleAction(formData: FormData): Promise<void> {
     const tenant = await requireTenant(readField(formData, "slug"));
-    if (!canManageMembers(tenant.role)) redirect(membersPath(tenant.tenantSlug));
+    if (!canManageMembers(tenant)) redirect(membersPath(tenant.tenantSlug));
 
     const parsed = updateRoleSchema.safeParse({
         userId: readField(formData, "userId"),
@@ -160,20 +174,67 @@ export async function updateMemberRoleAction(formData: FormData): Promise<void> 
     if (!parsed.success) redirect(membersPath(tenant.tenantSlug, "tidak-ditemukan"));
     if (parsed.data.userId === tenant.userId) redirect(membersPath(tenant.tenantSlug, "akun-sendiri"));
 
-    const result = await changeMembership(tenant.tenantId, parsed.data.userId, parsed.data.role);
+    const result = await changeMembership(tenant, parsed.data.userId, parsed.data.role);
     revalidatePath(`/toko/${tenant.tenantSlug}`, "layout");
     redirect(membersPath(tenant.tenantSlug, result));
 }
 
 export async function removeMemberAction(formData: FormData): Promise<void> {
     const tenant = await requireTenant(readField(formData, "slug"));
-    if (!canManageMembers(tenant.role)) redirect(membersPath(tenant.tenantSlug));
+    if (!canManageMembers(tenant)) redirect(membersPath(tenant.tenantSlug));
 
     const parsed = removeMemberSchema.safeParse({ userId: readField(formData, "userId") });
     if (!parsed.success) redirect(membersPath(tenant.tenantSlug, "tidak-ditemukan"));
     if (parsed.data.userId === tenant.userId) redirect(membersPath(tenant.tenantSlug, "akun-sendiri"));
 
-    const result = await changeMembership(tenant.tenantId, parsed.data.userId, null);
+    const result = await changeMembership(tenant, parsed.data.userId, null);
     revalidatePath(`/toko/${tenant.tenantSlug}`, "layout");
     redirect(membersPath(tenant.tenantSlug, result));
+}
+
+
+const memberPermissionsSchema = z.object({
+    userId: z.string().min(1).max(36),
+    mode: z.enum(["default", "custom"]),
+    permissions: z.array(z.string()),
+});
+
+export type MemberPermissionsState = {
+    error: string | null;
+    successMessage?: string;
+};
+
+export async function setMemberPermissionsAction(
+    _prevState: MemberPermissionsState,
+    formData: FormData,
+): Promise<MemberPermissionsState> {
+    const tenant = await requireTenant(readField(formData, "slug"));
+    if (!canManagePermissions(tenant)) {
+        return { error: "Hanya Super Admin yang bisa mengatur hak akses." };
+    }
+
+    const parsed = memberPermissionsSchema.safeParse({
+        userId: readField(formData, "userId"),
+        mode: readField(formData, "mode"),
+        permissions: formData.getAll("permissions").map(String),
+    });
+    if (!parsed.success) return { error: "Data tidak valid." };
+
+    const { userId, mode, permissions } = parsed.data;
+    const memberFilter = and(eq(tenantMembers.tenantId, tenant.tenantId), eq(tenantMembers.userId, userId));
+
+    const [member] = await db
+        .select({ role: tenantMembers.role })
+        .from(tenantMembers)
+        .where(memberFilter)
+        .limit(1);
+
+    if (!member) return { error: "Pengguna tidak ditemukan di toko ini." };
+    if (member.role === "OWNER") return { error: "Owner selalu memiliki akses penuh." };
+
+    const stored = mode === "default" ? null : serializePermissions(sanitizePermissions(permissions));
+    await db.update(tenantMembers).set({ permissions: stored }).where(memberFilter);
+
+    revalidatePath(`/toko/${tenant.tenantSlug}`, "layout");
+    return { error: null, successMessage: "Hak akses berhasil disimpan." };
 }

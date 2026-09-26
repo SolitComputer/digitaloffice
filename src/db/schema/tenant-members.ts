@@ -3,6 +3,7 @@ import {
   mysqlEnum,
   mysqlTable,
   primaryKey,
+  text,
   timestamp,
   varchar,
 } from "drizzle-orm/mysql-core";
@@ -22,6 +23,7 @@ export const tenantMembers = mysqlTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     role: mysqlEnum("role", TENANT_ROLES).notNull(),
+    permissions: text("permissions"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [

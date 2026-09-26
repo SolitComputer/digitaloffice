@@ -44,10 +44,11 @@ export function SidebarNav({ items, onNavigate }: SidebarNavProps) {
             onClick={onNavigate}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200 motion-reduce:transition-none",
+              "before:absolute before:inset-y-1.5 before:left-0 before:w-1 before:rounded-full before:bg-primary before:transition-all before:duration-200",
               isActive
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                ? "bg-primary/10 text-primary before:opacity-100"
+                : "text-muted-foreground before:scale-y-0 before:opacity-0 hover:translate-x-0.5 hover:bg-muted hover:text-foreground",
             )}
           >
             <Icon className="size-4" />

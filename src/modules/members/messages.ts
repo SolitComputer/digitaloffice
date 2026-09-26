@@ -4,6 +4,10 @@ export const MEMBER_MESSAGES = {
   dicabut: { tone: "success", text: "Akses pengguna berhasil dicabut." },
   "owner-terakhir": { tone: "error", text: "Toko harus memiliki minimal 1 owner." },
   "akun-sendiri": { tone: "error", text: "Anda tidak bisa mengubah akses akun sendiri." },
+  "role-lebih-tinggi": {
+    tone: "error",
+    text: "Anda tidak bisa mengatur pengguna atau memberi role yang lebih tinggi dari role Anda.",
+  },
   "tidak-ditemukan": { tone: "error", text: "Pengguna tidak ditemukan di toko ini." },
 } as const;
 

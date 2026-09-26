@@ -10,15 +10,18 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import type { NavItem } from "./nav";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import type { BackLink, NavItem } from "./nav";
 import { SidebarNav } from "./sidebar-nav";
 
 type MobileNavProps = {
   title: string;
   items: NavItem[];
+  backLink?: BackLink;
 };
 
-export function MobileNav({ title, items }: MobileNavProps) {
+export function MobileNav({ title, items, backLink }: MobileNavProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -32,6 +35,16 @@ export function MobileNav({ title, items }: MobileNavProps) {
         <SheetHeader className="px-0">
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
+        {backLink ? (
+          <Link
+            href={backLink.href}
+            onClick={() => setOpen(false)}
+            className="mb-2 flex items-center gap-2 rounded-md border border-dashed px-3 py-2 text-xs font-medium text-muted-foreground"
+          >
+            <ArrowLeft className="size-3.5" />
+            {backLink.label}
+          </Link>
+        ) : null}
         <SidebarNav items={items} onNavigate={() => setOpen(false)} />
       </SheetContent>
     </Sheet>

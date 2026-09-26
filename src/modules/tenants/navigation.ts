@@ -1,18 +1,21 @@
 import type { NavItem } from "@/components/app-shell/nav";
 import type { TenantContext } from "@/modules/tenants/context";
-import { canViewMembers } from "@/modules/tenants/permissions";
+import { canViewMembers, hasPermission } from "@/modules/tenants/permissions";
 
-export function getTenantNav(slug: string, role: TenantContext["role"]): NavItem[] {
-  const base = `/toko/${slug}`;
+export function getTenantNav(tenant: TenantContext): NavItem[] {
+  const base = `/toko/${tenant.tenantSlug}`;
+  const items: NavItem[] = [{ href: base, label: "Dashboard", icon: "dashboard", exact: true }];
 
-  const items: NavItem[] = [
-    { href: base, label: "Dashboard", icon: "dashboard", exact: true },
-    { href: `${base}/inventory`, label: "Inventory", icon: "inventory", disabled: true },
+  if (hasPermission(tenant, "inventory.view")) {
+    items.push({ href: `${base}/inventory`, label: "Inventory", icon: "inventory" });
+  }
+
+  items.push(
     { href: `${base}/absensi`, label: "Absensi", icon: "attendance", disabled: true },
     { href: `${base}/cashflow`, label: "Cashflow", icon: "cashflow", disabled: true },
-  ];
+  );
 
-  if (canViewMembers(role)) {
+  if (canViewMembers(tenant)) {
     items.push({ href: `${base}/pengguna`, label: "Pengguna", icon: "users" });
   }
 

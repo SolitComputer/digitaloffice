@@ -14,6 +14,7 @@ import { EnableTwoFactor } from "@/modules/auth/components/enable-two-factor";
 import { SignOutButton } from "@/modules/auth/components/sign-out-button";
 import { requireSession } from "@/modules/auth/session";
 import { resolveHomePath } from "@/modules/tenants/queries";
+import { AuthShell } from "@/components/auth-shell";
 
 export const metadata: Metadata = {
   title: "Keamanan Akun | DigitalOffice",
@@ -39,8 +40,7 @@ export default async function SecurityPage({ searchParams }: SecurityPageProps) 
   const homePath = isRequired ? null : await resolveHomePath(session.user.id);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/40 p-6">
-      <div className="w-full max-w-md space-y-4">
+        <AuthShell>
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between gap-2">
@@ -77,7 +77,6 @@ export default async function SecurityPage({ searchParams }: SecurityPageProps) 
           )}
           <SignOutButton />
         </div>
-      </div>
-    </main>
+      </AuthShell>
   );
 }

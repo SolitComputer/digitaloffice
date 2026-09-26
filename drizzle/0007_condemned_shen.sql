@@ -1,0 +1,1 @@
+ALTER TABLE `tenant_members` ADD `permissions` text;

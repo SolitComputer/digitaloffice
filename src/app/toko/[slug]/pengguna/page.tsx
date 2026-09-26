@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { CreateMemberDialog } from "@/modules/members/components/create-member-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
-import { TENANT_ROLES } from "@/db/schema";
 import { Card } from "@/components/ui/card";
 import {
     Table,
@@ -20,8 +19,15 @@ import { MemberRowActions } from "@/modules/members/components/member-row-action
 import { getMemberMessage } from "@/modules/members/messages";
 import { listMembers } from "@/modules/members/queries";
 import { requireTenant } from "@/modules/tenants/context";
-import { canManageMembers, canViewMembers } from "@/modules/tenants/permissions";
-import { ROLE_LABELS } from "@/modules/tenants/roles";
+import {
+    canManageMembers,
+    canManagePermissions,
+    canViewMembers,
+    getDefaultPermissions,
+    parseStoredPermissions,
+} from "@/modules/tenants/permissions";
+import { MemberPermissionsDialog } from "@/modules/members/components/member-permissions-dialog";
+import { canManageRole, getAssignableRoles, ROLE_LABELS } from "@/modules/tenants/roles";
 
 export const metadata: Metadata = {
     title: "Pengguna | DigitalOffice",
@@ -35,10 +41,11 @@ type MembersPageProps = {
 export default async function MembersPage({ params, searchParams }: MembersPageProps) {
     const [{ slug }, query] = await Promise.all([params, searchParams]);
     const tenant = await requireTenant(slug);
-    if (!canViewMembers(tenant.role)) notFound();
+    if (!canViewMembers(tenant)) notFound();
 
-    const canManage = canManageMembers(tenant.role);
-    const roleOptions = TENANT_ROLES.map((role) => ({ value: role, label: ROLE_LABELS[role] }));
+    const canManage = canManageMembers(tenant);
+    const canEditPermissions = canManagePermissions(tenant);
+    const roleOptions = getAssignableRoles(tenant.role).map((role) => ({ value: role, label: ROLE_LABELS[role] }));
     const members = await listMembers(tenant);
     const message = getMemberMessage(readParam(query.pesan));
 
@@ -91,6 +98,7 @@ export default async function MembersPage({ params, searchParams }: MembersPageP
                             ) : (
                                 members.map((member) => {
                                     const isSelf = member.userId === tenant.userId;
+                                    const isLocked = isSelf || !canManageRole(tenant.role, member.role);
 
                                     return (
                                         <TableRow key={member.userId}>
@@ -106,12 +114,17 @@ export default async function MembersPage({ params, searchParams }: MembersPageP
                                                 <p className="text-xs text-muted-foreground">{member.email}</p>
                                             </TableCell>
                                             <TableCell>
-                                                <Badge variant="secondary">{ROLE_LABELS[member.role]}</Badge>
+                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                    <Badge variant="secondary">{ROLE_LABELS[member.role]}</Badge>
+                                                    {member.permissions !== null && member.role !== "OWNER" ? (
+                                                        <Badge variant="outline">Akses khusus</Badge>
+                                                    ) : null}
+                                                </div>
                                             </TableCell>
                                             <TableCell>{formatDate(member.joinedAt)}</TableCell>
                                             {canManage ? (
                                                 <TableCell>
-                                                    {isSelf ? (
+                                                    {isLocked ? (
                                                         <p className="text-right text-xs text-muted-foreground">—</p>
                                                     ) : (
                                                         <MemberRowActions
@@ -119,6 +132,19 @@ export default async function MembersPage({ params, searchParams }: MembersPageP
                                                             userId={member.userId}
                                                             name={member.name}
                                                             role={member.role}
+                                                            roleOptions={roleOptions}
+                                                            extraAction={
+                                                                canEditPermissions && member.role !== "OWNER" ? (
+                                                                    <MemberPermissionsDialog
+                                                                        slug={tenant.tenantSlug}
+                                                                        userId={member.userId}
+                                                                        name={member.name}
+                                                                        roleLabel={ROLE_LABELS[member.role]}
+                                                                        defaultPermissions={[...getDefaultPermissions(member.role)]}
+                                                                        customPermissions={parseStoredPermissions(member.permissions)}
+                                                                    />
+                                                                ) : null
+                                                            }
                                                         />
                                                     )}
                                                 </TableCell>

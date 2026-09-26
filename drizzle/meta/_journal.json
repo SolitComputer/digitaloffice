@@ -43,6 +43,20 @@
       "when": 1790407810145,
       "tag": "0005_dashing_iron_monger",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1790409370817,
+      "tag": "0006_magical_captain_cross",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1790415054274,
+      "tag": "0007_condemned_shen",
+      "breakpoints": true
     }
   ]
 }

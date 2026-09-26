@@ -11,6 +11,7 @@ import { ChangePasswordForm } from "@/modules/auth/components/change-password-fo
 import { SignOutButton } from "@/modules/auth/components/sign-out-button";
 import { requireSession } from "@/modules/auth/session";
 import { resolveHomePath } from "@/modules/tenants/queries";
+import { AuthShell } from "@/components/auth-shell";
 
 export const metadata: Metadata = {
   title: "Ganti Password | DigitalOffice",
@@ -22,8 +23,7 @@ export default async function ChangePasswordPage() {
   const homePath = isForced ? null : await resolveHomePath(session.user.id);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/40 p-6">
-      <div className="w-full max-w-sm space-y-4">
+        <AuthShell>
         <Card>
           <CardHeader>
             <CardTitle>Ganti Password</CardTitle>
@@ -47,7 +47,6 @@ export default async function ChangePasswordPage() {
           )}
           <SignOutButton />
         </div>
-      </div>
-    </main>
+      </AuthShell>
   );
 }

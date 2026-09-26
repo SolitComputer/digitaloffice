@@ -25,3 +25,8 @@ export type NavItem = {
   exact?: boolean;
   disabled?: boolean;
 };
+
+export type BackLink = {
+  href: string;
+  label: string;
+};

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { AuthShell } from "@/components/auth-shell";
 import {
   Card,
   CardContent,
@@ -20,22 +21,19 @@ export default async function LoginPage() {
   if (session) redirect(await resolveHomePath(session.user.id));
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/40 p-6">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 text-center">
-          <p className="text-2xl font-semibold tracking-tight">DigitalOffice</p>
-          <p className="text-sm text-muted-foreground">Kelola toko Anda dalam satu tempat</p>
-        </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>Masuk</CardTitle>
-            <CardDescription>Gunakan email dan password dari admin toko Anda.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <LoginForm />
-          </CardContent>
-        </Card>
-      </div>
-    </main>
+    <AuthShell>
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle>Selamat datang kembali</CardTitle>
+          <CardDescription>Masuk dengan email dan password dari admin toko Anda.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <LoginForm />
+        </CardContent>
+      </Card>
+      <p className="text-center text-xs text-muted-foreground">
+        © {new Date().getFullYear()} DigitalOffice
+      </p>
+    </AuthShell>
   );
 }
