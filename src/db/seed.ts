@@ -69,6 +69,7 @@ async function main(): Promise<void> {
     email: seedEnv.SEED_SUPERADMIN_EMAIL,
     password: seedEnv.SEED_SUPERADMIN_PASSWORD,
     isSuperAdmin: true,
+    mustChangePassword: false,
   });
 
   if (seedEnv.NODE_ENV === "production") {

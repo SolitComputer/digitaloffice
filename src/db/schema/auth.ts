@@ -19,6 +19,8 @@ export const users = mysqlTable("users", {
   emailVerified: boolean("email_verified").notNull().default(false),
   image: text("image"),
   isSuperAdmin: boolean("is_super_admin").notNull().default(false),
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
+  twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
   ...timestamps,
 });
 

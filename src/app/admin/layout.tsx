@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/app-shell/app-shell";
-import { SignOutButton } from "@/modules/auth/components/sign-out-button";
+import { AccountActions } from "@/modules/auth/components/account-actions";
 import { requireSuperAdmin } from "@/modules/auth/session";
 import { PLATFORM_NAV } from "@/modules/platform/navigation";
 
@@ -13,7 +13,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       subtitle="Super Admin"
       userName={session.user.name}
       items={PLATFORM_NAV}
-      userActions={<SignOutButton />}
+      userActions={<AccountActions />}
     >
       {children}
     </AppShell>

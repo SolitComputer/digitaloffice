@@ -6,6 +6,7 @@ export type CredentialUserInput = {
   email: string;
   password: string;
   isSuperAdmin?: boolean;
+  mustChangePassword?: boolean;
 };
 
 export type CredentialUserRows = {
@@ -28,6 +29,7 @@ export async function buildCredentialUserRows(
       email: input.email,
       emailVerified: true,
       isSuperAdmin: input.isSuperAdmin ?? false,
+      mustChangePassword: input.mustChangePassword ?? true,
     },
     account: {
       id: crypto.randomUUID(),
