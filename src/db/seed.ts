@@ -1,9 +1,9 @@
 import "./load-env";
-import { hashPassword } from "better-auth/crypto";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { accounts, tenantMembers, tenants, users, type TenantRole } from "@/db/schema";
+import { buildCredentialUserRows, type CredentialUserInput } from "@/modules/users/credential";
 
 const seedEnv = z
   .object({
@@ -14,13 +14,6 @@ const seedEnv = z
     SEED_DEMO_PASSWORD: z.string().min(8).optional(),
   })
   .parse(process.env);
-
-type CredentialUserInput = {
-  name: string;
-  email: string;
-  password: string;
-  isSuperAdmin?: boolean;
-};
 
 async function ensureCredentialUser(input: CredentialUserInput): Promise<string> {
   const [existing] = await db
@@ -34,28 +27,15 @@ async function ensureCredentialUser(input: CredentialUserInput): Promise<string>
     return existing.id;
   }
 
-  const userId = crypto.randomUUID();
-  const passwordHash = await hashPassword(input.password);
+  const rows = await buildCredentialUserRows(input);
 
   await db.transaction(async (tx) => {
-    await tx.insert(users).values({
-      id: userId,
-      name: input.name,
-      email: input.email,
-      emailVerified: true,
-      isSuperAdmin: input.isSuperAdmin ?? false,
-    });
-    await tx.insert(accounts).values({
-      id: crypto.randomUUID(),
-      accountId: userId,
-      providerId: "credential",
-      userId,
-      password: passwordHash,
-    });
+    await tx.insert(users).values(rows.user);
+    await tx.insert(accounts).values(rows.account);
   });
 
   console.log(`✓ User ${input.email} dibuat`);
-  return userId;
+  return rows.userId;
 }
 
 async function ensureTenant(name: string, slug: string): Promise<string> {
