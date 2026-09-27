@@ -19,5 +19,9 @@ export function getTenantNav(tenant: TenantContext): NavItem[] {
     items.push({ href: `${base}/pengguna`, label: "Pengguna", icon: "users" });
   }
 
+  if (hasPermission(tenant, "settings.view")) {
+    items.push({ href: `${base}/pengaturan`, label: "Pengaturan", icon: "settings" });
+  }
+
   return items;
 }

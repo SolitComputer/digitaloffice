@@ -3,6 +3,7 @@ import {
   Clock,
   LayoutDashboard,
   Package,
+  Settings,
   Users,
   Wallet,
 } from "lucide-react";
@@ -14,6 +15,7 @@ export const NAV_ICONS = {
   attendance: Clock,
   cashflow: Wallet,
   users: Users,
+  settings: Settings,
 } as const;
 
 export type NavIconKey = keyof typeof NAV_ICONS;

@@ -128,7 +128,7 @@ export async function createMemberAction(
         return { error: null, fieldErrors: { role: "Anda tidak bisa memberi role yang lebih tinggi dari role Anda" }, values };
     }
 
-    const emailTakenError ={ error: null, fieldErrors: { email: "Email sudah terdaftar di DigitalOffice" }, values };
+    const emailTakenError = { error: null, fieldErrors: { email: "Email sudah terdaftar di DigitalOffice" }, values };
 
     const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, data.email)).limit(1);
     if (existing) return emailTakenError;
@@ -230,7 +230,7 @@ export async function setMemberPermissionsAction(
         .limit(1);
 
     if (!member) return { error: "Pengguna tidak ditemukan di toko ini." };
-    if (member.role === "OWNER") return { error: "Owner selalu memiliki akses penuh." };
+    if (member.role === "OWNER") return { error: "Kepala Toko selalu memiliki akses penuh." };
 
     const stored = mode === "default" ? null : serializePermissions(sanitizePermissions(permissions));
     await db.update(tenantMembers).set({ permissions: stored }).where(memberFilter);

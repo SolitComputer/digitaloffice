@@ -30,7 +30,7 @@ export function CreateTenantDialog() {
       >
         <DialogHeader>
           <DialogTitle>Tambah Toko</DialogTitle>
-          <DialogDescription>Daftarkan toko baru beserta akun owner-nya.</DialogDescription>
+          <DialogDescription>Daftarkan toko baru beserta akun Kepala Toko-nya.</DialogDescription>
         </DialogHeader>
         <CreateTenantForm onSuccess={() => setOpen(false)} />
       </DialogContent>

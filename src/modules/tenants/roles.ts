@@ -4,7 +4,7 @@ type ActorRole = TenantRole | "SUPER_ADMIN";
 
 export const ROLE_LABELS: Record<ActorRole, string> = {
   SUPER_ADMIN: "Super Admin",
-  OWNER: "Owner",
+  OWNER: "Kepala Toko",
   MANAGER: "Manager",
   KASIR: "Kasir",
   STAFF: "Staff",

@@ -21,7 +21,12 @@ import {
   setMemberPermissionsAction,
   type MemberPermissionsState,
 } from "@/modules/members/actions";
-import { PERMISSION_GROUPS, type Permission } from "@/modules/tenants/permissions";
+import {
+  getDependentPermissions,
+  PERMISSION_GROUPS,
+  PERMISSION_REQUIREMENTS,
+  type Permission,
+} from "@/modules/tenants/permissions";
 
 type MemberPermissionsDialogProps = {
   slug: string;
@@ -49,7 +54,7 @@ export function MemberPermissionsDialog(props: MemberPermissionsDialogProps) {
         <DialogHeader>
           <DialogTitle>Hak Akses: {props.name}</DialogTitle>
           <DialogDescription>
-            Role saat ini: {props.roleLabel}. Atur akses khusus hanya untuk akun ini di toko ini.
+            Role saat ini: {props.roleLabel}. Pengaturan ini hanya berlaku untuk akun ini di toko ini.
           </DialogDescription>
         </DialogHeader>
         <PermissionsForm {...props} onSuccess={() => setOpen(false)} />
@@ -88,8 +93,14 @@ function PermissionsForm({
   function toggle(permission: Permission, checked: boolean) {
     setSelected((current) => {
       const next = new Set(current);
-      if (checked) next.add(permission);
-      else next.delete(permission);
+      if (checked) {
+        next.add(permission);
+        const required = PERMISSION_REQUIREMENTS[permission];
+        if (required) next.add(required);
+      } else {
+        next.delete(permission);
+        for (const dependent of getDependentPermissions(permission)) next.delete(dependent);
+      }
       return next;
     });
   }
@@ -109,15 +120,16 @@ function PermissionsForm({
         <div className="space-y-0.5">
           <Label htmlFor="custom-mode">Atur akses khusus</Label>
           <p className="text-xs text-muted-foreground">
-            {useCustom ? "Centang hak akses yang diizinkan." : "Mengikuti hak akses bawaan role."}
+            {useCustom ? "Centang halaman dan aksi yang diizinkan." : "Mengikuti hak akses bawaan role."}
           </p>
         </div>
         <Switch id="custom-mode" checked={useCustom} onCheckedChange={setUseCustom} />
       </div>
 
       {PERMISSION_GROUPS.map((group) => (
-        <fieldset key={group.label} className="grid gap-3">
-          <legend className="mb-1 text-sm font-semibold">{group.label}</legend>
+        <fieldset key={group.label} className="grid gap-3 rounded-lg border p-4">
+          <legend className="px-1 text-sm font-semibold">{group.label}</legend>
+          <p className="-mt-1 text-xs text-muted-foreground">{group.description}</p>
           {group.permissions.map((permission) => {
             const checked = useCustom ? selected.has(permission.key) : defaultSet.has(permission.key);
             const id = `perm-${permission.key}`;
