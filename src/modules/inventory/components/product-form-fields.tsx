@@ -1,32 +1,28 @@
 import { FormField } from "@/components/form-field";
 import type { ProductFieldValues } from "@/modules/inventory/actions";
+import type { ProductField } from "@/modules/inventory/form-config";
 
 type ProductFormFieldsProps = {
-  values: ProductFieldValues & { initialStock?: string };
+  fields: ProductField[];
+  values: ProductFieldValues;
   fieldErrors: Record<string, string>;
 };
 
-export function ProductFormFields({ values, fieldErrors }: ProductFormFieldsProps) {
+export function ProductFormFields({ fields, values, fieldErrors }: ProductFormFieldsProps) {
   return (
-    <>
-      <FormField id="name" label="Nama produk" defaultValue={values.name} error={fieldErrors.name} required />
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FormField id="sku" label="SKU (opsional)" defaultValue={values.sku} error={fieldErrors.sku} placeholder="KPI-001" />
-        <FormField id="unit" label="Satuan" defaultValue={values.unit} error={fieldErrors.unit} placeholder="pcs, kg, box" required />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FormField id="costPrice" label="Harga modal" inputMode="numeric" defaultValue={values.costPrice} error={fieldErrors.costPrice} placeholder="20.000" />
-        <FormField id="sellPrice" label="Harga jual" inputMode="numeric" defaultValue={values.sellPrice} error={fieldErrors.sellPrice} placeholder="25.000" />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        {values.initialStock !== undefined ? (
-          <FormField id="initialStock" label="Stok awal" inputMode="numeric" defaultValue={values.initialStock} error={fieldErrors.initialStock} />
-        ) : null}
-        <FormField id="minStock" label="Batas stok minimum" inputMode="numeric" defaultValue={values.minStock} error={fieldErrors.minStock} hint="Isi 0 kalau tidak ingin dipantau." />
-      </div>
-    </>
+    <div className="grid gap-4">
+      {fields.map((field) => (
+        <FormField
+          key={field.name}
+          id={field.name}
+          label={field.required ? field.label : `${field.label} (opsional)`}
+          defaultValue={values[field.name] ?? ""}
+          error={fieldErrors[field.name]}
+          required={field.required}
+          inputMode={field.numeric ? "numeric" : undefined}
+          placeholder={field.numeric ? "0" : undefined}
+        />
+      ))}
+    </div>
   );
 }

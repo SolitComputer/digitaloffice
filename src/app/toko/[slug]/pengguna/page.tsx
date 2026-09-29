@@ -19,14 +19,7 @@ import { MemberRowActions } from "@/modules/members/components/member-row-action
 import { getMemberMessage } from "@/modules/members/messages";
 import { listMembers } from "@/modules/members/queries";
 import { requireTenant } from "@/modules/tenants/context";
-import {
-    canManageMembers,
-    canManagePermissions,
-    canViewMembers,
-    getDefaultPermissions,
-    parseStoredPermissions,
-} from "@/modules/tenants/permissions";
-import { MemberPermissionsDialog } from "@/modules/members/components/member-permissions-dialog";
+import { canManageMembers, canViewMembers } from "@/modules/tenants/permissions";
 import { canManageRole, getAssignableRoles, ROLE_LABELS } from "@/modules/tenants/roles";
 
 export const metadata: Metadata = {
@@ -44,7 +37,6 @@ export default async function MembersPage({ params, searchParams }: MembersPageP
     if (!canViewMembers(tenant)) notFound();
 
     const canManage = canManageMembers(tenant);
-    const canEditPermissions = canManagePermissions(tenant);
     const roleOptions = getAssignableRoles(tenant.role).map((role) => ({ value: role, label: ROLE_LABELS[role] }));
     const members = await listMembers(tenant);
     const message = getMemberMessage(readParam(query.pesan));
@@ -133,18 +125,6 @@ export default async function MembersPage({ params, searchParams }: MembersPageP
                                                             name={member.name}
                                                             role={member.role}
                                                             roleOptions={roleOptions}
-                                                            extraAction={
-                                                                canEditPermissions && member.role !== "OWNER" ? (
-                                                                    <MemberPermissionsDialog
-                                                                        slug={tenant.tenantSlug}
-                                                                        userId={member.userId}
-                                                                        name={member.name}
-                                                                        roleLabel={ROLE_LABELS[member.role]}
-                                                                        defaultPermissions={[...getDefaultPermissions(member.role)]}
-                                                                        customPermissions={parseStoredPermissions(member.permissions)}
-                                                                    />
-                                                                ) : null
-                                                            }
                                                         />
                                                     )}
                                                 </TableCell>

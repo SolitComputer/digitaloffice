@@ -236,5 +236,6 @@ export async function setMemberPermissionsAction(
     await db.update(tenantMembers).set({ permissions: stored }).where(memberFilter);
 
     revalidatePath(`/toko/${tenant.tenantSlug}`, "layout");
+    revalidatePath("/admin/pengaturan");
     return { error: null, successMessage: "Hak akses berhasil disimpan." };
 }

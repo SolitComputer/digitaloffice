@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Pencil } from "lucide-react";
+import type { FormType } from "@/db/schema";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,10 +18,11 @@ import { EditProductForm } from "@/modules/inventory/components/edit-product-for
 type EditProductDialogProps = {
   slug: string;
   productId: string;
+  formType: FormType;
   values: ProductFieldValues;
 };
 
-export function EditProductDialog({ slug, productId, values }: EditProductDialogProps) {
+export function EditProductDialog({ slug, productId, formType, values }: EditProductDialogProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -36,10 +38,16 @@ export function EditProductDialog({ slug, productId, values }: EditProductDialog
         onInteractOutside={(event) => event.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Edit Produk</DialogTitle>
-          <DialogDescription>Perubahan stok dicatat lewat tombol Catat Stok agar riwayatnya tersimpan.</DialogDescription>
+          <DialogTitle>Edit Barang</DialogTitle>
+          <DialogDescription>SN & jumlah unit dikelola lewat Kelola Unit.</DialogDescription>
         </DialogHeader>
-        <EditProductForm slug={slug} productId={productId} values={values} onSuccess={() => setOpen(false)} />
+        <EditProductForm
+          slug={slug}
+          productId={productId}
+          formType={formType}
+          values={values}
+          onSuccess={() => setOpen(false)}
+        />
       </DialogContent>
     </Dialog>
   );

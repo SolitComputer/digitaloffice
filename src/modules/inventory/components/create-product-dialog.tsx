@@ -11,13 +11,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import type { CategoryOption } from "@/modules/inventory/categories/queries";
 import { CreateProductForm } from "@/modules/inventory/components/create-product-form";
 
 type CreateProductDialogProps = {
   slug: string;
+  categories: CategoryOption[];
 };
 
-export function CreateProductDialog({ slug }: CreateProductDialogProps) {
+export function CreateProductDialog({ slug, categories }: CreateProductDialogProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -25,7 +27,7 @@ export function CreateProductDialog({ slug }: CreateProductDialogProps) {
       <DialogTrigger asChild>
         <Button>
           <Plus className="size-4" />
-          Tambah Produk
+          Tambah Barang
         </Button>
       </DialogTrigger>
       <DialogContent
@@ -33,10 +35,10 @@ export function CreateProductDialog({ slug }: CreateProductDialogProps) {
         onInteractOutside={(event) => event.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Tambah Produk</DialogTitle>
-          <DialogDescription>Stok awal akan tercatat otomatis di riwayat stok.</DialogDescription>
+          <DialogTitle>Tambah Barang</DialogTitle>
+          <DialogDescription>Field menyesuaikan tipe form kategori yang dipilih.</DialogDescription>
         </DialogHeader>
-        <CreateProductForm slug={slug} onSuccess={() => setOpen(false)} />
+        <CreateProductForm slug={slug} categories={categories} onSuccess={() => setOpen(false)} />
       </DialogContent>
     </Dialog>
   );

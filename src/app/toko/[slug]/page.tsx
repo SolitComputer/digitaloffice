@@ -26,12 +26,18 @@ export default async function TenantDashboardPage({ params }: TenantPageProps) {
         description={`Ringkasan aktivitas ${tenant.tenantName} hari ini.`}
       />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard index={0} label="Total Produk" value={formatNumber(inventory.totalProducts)} icon={<Package />} />
+        <StatCard
+          index={0}
+          label="Total Produk"
+          value={formatNumber(inventory.totalProducts)}
+          hint={`${formatNumber(inventory.totalUnits)} unit stok`}
+          icon={<Package />}
+        />
         <StatCard
           index={1}
-          label="Stok Menipis"
-          value={formatNumber(inventory.lowStock)}
-          hint="Stok ≤ batas minimum"
+          label="Unit Minus/Matot"
+          value={formatNumber(inventory.minusUnits)}
+          hint="Unit bermasalah"
           icon={<AlertTriangle />}
         />
         <StatCard index={2} label="Hadir Hari Ini" value="—" hint="Segera hadir" icon={<Clock />} />

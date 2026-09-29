@@ -1,47 +1,61 @@
 import { z } from "zod";
-import { STOCK_MOVEMENT_TYPES } from "@/db/schema";
+import { FORM_TYPES } from "@/db/schema";
 
 const MAX_MONEY = 1_000_000_000_000;
-const MAX_QUANTITY = 1_000_000;
-export const MAX_STOCK = 1_000_000_000;
+export const MAX_STOCK = 1000;
 
-const moneySchema = z.number().int().min(0, "Tidak boleh minus").max(MAX_MONEY, "Angka terlalu besar");
-const quantitySchema = z.number().int().min(0, "Tidak boleh minus").max(MAX_QUANTITY, "Angka terlalu besar");
+const money = z.number().int("Harus bilangan bulat").min(0, "Tidak boleh minus").max(MAX_MONEY, "Angka terlalu besar");
+const optText = (max: number) => z.string().trim().max(max, `Maksimal ${max} karakter`).default("");
 
-const productFieldsSchema = z.object({
-    name: z.string().min(2, "Nama produk minimal 2 karakter").max(200, "Nama produk terlalu panjang"),
-    sku: z.string().max(60, "SKU maksimal 60 karakter"),
-    unit: z.string().min(1, "Satuan wajib diisi").max(20, "Satuan terlalu panjang"),
-    costPrice: moneySchema,
-    sellPrice: moneySchema,
-    minStock: quantitySchema,
-});
+const productBase = {
+  categoryId: z.uuid("Kategori tidak valid"),
+  formType: z.enum(FORM_TYPES),
+  name: z.string().trim().min(1, "Nama barang wajib diisi").max(200, "Nama terlalu panjang"),
+  brand: optText(100),
+  cpu: optText(100),
+  ram: optText(60),
+  storage: optText(100),
+  gpu: optText(100),
+  display: optText(100),
+  condition: optText(150),
+  spec: optText(255),
+  costPrice: money.default(0),
+  sellPrice: money.default(0),
+  note: optText(2000),
+};
 
-export const createProductSchema = productFieldsSchema.extend({
-    initialStock: quantitySchema,
-});
+export const createProductSchema = z
+  .object({
+    ...productBase,
+    stock: z
+      .number({ error: "Stok wajib diisi" })
+      .int("Stok harus bilangan bulat")
+      .min(1, "Stok minimal 1 unit")
+      .max(MAX_STOCK, `Maksimal ${MAX_STOCK} unit sekaligus`),
+  })
+  .superRefine((d, ctx) => {
+    if (d.sellPrice <= 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["sellPrice"],
+        message: d.formType === "laptop" ? "Harga store wajib diisi" : "Harga jual wajib diisi",
+      });
+    }
+  });
 
-export const updateProductSchema = productFieldsSchema.extend({
-    productId: z.uuid(),
-});
+export const updateProductSchema = z
+  .object({ ...productBase, productId: z.uuid("Produk tidak ditemukan") })
+  .superRefine((d, ctx) => {
+    if (d.sellPrice <= 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["sellPrice"],
+        message: d.formType === "laptop" ? "Harga store wajib diisi" : "Harga jual wajib diisi",
+      });
+    }
+  });
 
 export const productActiveSchema = z.object({
-    productId: z.uuid(),
-    active: z.enum(["true", "false"]).transform((value) => value === "true"),
+  productId: z.uuid(),
+  active: z.enum(["true", "false"]).transform((value) => value === "true"),
 });
-
-export const stockMovementSchema = z
-    .object({
-        productId: z.uuid(),
-        type: z.enum(STOCK_MOVEMENT_TYPES, { error: "Jenis mutasi tidak valid" }),
-        quantity: z.number({ error: "Jumlah wajib diisi" }).pipe(quantitySchema),
-        note: z.string().max(255, "Catatan maksimal 255 karakter"),
-    })
-    .superRefine((data, ctx) => {
-        if (data.type !== "ADJUST" && data.quantity < 1) {
-            ctx.addIssue({ code: "custom", path: ["quantity"], message: "Jumlah minimal 1" });
-        }
-        if (data.type !== "IN" && data.note.length < 3) {
-            ctx.addIssue({ code: "custom", path: ["note"], message: "Alasan wajib diisi, minimal 3 karakter" });
-        }
-    });

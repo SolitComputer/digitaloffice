@@ -3,211 +3,225 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { products, stockMovements } from "@/db/schema";
-import { isDuplicateEntryError } from "@/lib/db-errors";
+import { categories, products, productUnits } from "@/db/schema";
 import { readField, toFieldErrors } from "@/lib/form-data";
 import { parseWholeNumber } from "@/lib/number";
 import { createProductSchema, productActiveSchema, updateProductSchema } from "@/modules/inventory/schemas";
 import { requireTenant } from "@/modules/tenants/context";
 import { canManageProducts } from "@/modules/tenants/permissions";
 
-export type ProductFieldValues = {
-    name: string;
-    sku: string;
-    unit: string;
-    costPrice: string;
-    sellPrice: string;
-    minStock: string;
+export type ProductFieldValues = Record<string, string>;
+
+type ProductFormState = {
+  error: string | null;
+  fieldErrors: Record<string, string>;
+  values: ProductFieldValues;
+  successMessage?: string;
 };
 
-export type CreateProductValues = ProductFieldValues & {
-    initialStock: string;
-};
+export type CreateProductState = ProductFormState;
+export type UpdateProductState = ProductFormState;
+export type ProductActionState = { error: string | null; successMessage?: string };
 
-type ProductFormState<TValues> = {
-    error: string | null;
-    fieldErrors: Record<string, string>;
-    values: TValues;
-    successMessage?: string;
-};
+const TEXT_FIELDS = [
+  "name",
+  "brand",
+  "cpu",
+  "ram",
+  "storage",
+  "gpu",
+  "display",
+  "condition",
+  "spec",
+  "note",
+] as const;
 
-export type CreateProductState = ProductFormState<CreateProductValues>;
-export type UpdateProductState = ProductFormState<ProductFieldValues>;
-
-export type ProductActionState = {
-    error: string | null;
-    successMessage?: string;
-};
-
-const EMPTY_PRODUCT_VALUES: CreateProductValues = {
-    name: "",
-    sku: "",
-    unit: "pcs",
-    costPrice: "",
-    sellPrice: "",
-    initialStock: "0",
-    minStock: "0",
-};
-
-const SKU_TAKEN_ERROR = { sku: "SKU sudah dipakai produk lain di toko ini" };
-
-function readProductFieldValues(formData: FormData): ProductFieldValues {
-    return {
-        name: readField(formData, "name"),
-        sku: readField(formData, "sku").toUpperCase(),
-        unit: readField(formData, "unit").toLowerCase(),
-        costPrice: readField(formData, "costPrice"),
-        sellPrice: readField(formData, "sellPrice"),
-        minStock: readField(formData, "minStock"),
-    };
+function readProductValues(formData: FormData): ProductFieldValues {
+  const values: ProductFieldValues = { categoryId: readField(formData, "categoryId") };
+  for (const key of TEXT_FIELDS) values[key] = readField(formData, key);
+  values.costPrice = readField(formData, "costPrice");
+  values.sellPrice = readField(formData, "sellPrice");
+  values.stock = readField(formData, "stock");
+  return values;
 }
 
-function toProductInput(values: ProductFieldValues) {
-    return {
-        name: values.name,
-        sku: values.sku,
-        unit: values.unit,
-        costPrice: parseWholeNumber(values.costPrice) ?? 0,
-        sellPrice: parseWholeNumber(values.sellPrice) ?? 0,
-        minStock: parseWholeNumber(values.minStock) ?? 0,
-    };
+function toNumericInput(values: ProductFieldValues) {
+  return {
+    ...values,
+    costPrice: parseWholeNumber(values.costPrice ?? "") ?? 0,
+    sellPrice: parseWholeNumber(values.sellPrice ?? "") ?? 0,
+  };
 }
 
-function productFilter(tenantId: string, productId: string) {
-    return and(eq(products.tenantId, tenantId), eq(products.id, productId));
+async function getCategory(tenantId: string, categoryId: string) {
+  const [category] = await db
+    .select({ formType: categories.formType, isActive: categories.isActive })
+    .from(categories)
+    .where(and(eq(categories.tenantId, tenantId), eq(categories.id, categoryId)))
+    .limit(1);
+  return category ?? null;
+}
+
+// Kolom produk dari data tervalidasi → string kosong disimpan sebagai null.
+function toProductColumns(d: {
+  name: string;
+  brand: string;
+  costPrice: number;
+  sellPrice: number;
+  note: string;
+  cpu: string;
+  ram: string;
+  storage: string;
+  gpu: string;
+  display: string;
+  condition: string;
+  spec: string;
+}) {
+  return {
+    name: d.name,
+    brand: d.brand || null,
+    costPrice: d.costPrice,
+    sellPrice: d.sellPrice,
+    note: d.note || null,
+    cpu: d.cpu || null,
+    ram: d.ram || null,
+    storage: d.storage || null,
+    gpu: d.gpu || null,
+    display: d.display || null,
+    condition: d.condition || null,
+    spec: d.spec || null,
+  };
 }
 
 export async function createProductAction(
-    _prevState: CreateProductState,
-    formData: FormData,
+  _prev: CreateProductState,
+  formData: FormData,
 ): Promise<CreateProductState> {
-    const tenant = await requireTenant(readField(formData, "slug"));
-    const values: CreateProductValues = {
-        ...readProductFieldValues(formData),
-        initialStock: readField(formData, "initialStock"),
-    };
+  const tenant = await requireTenant(readField(formData, "slug"));
+  const values = readProductValues(formData);
 
-    if (!canManageProducts(tenant)) {
-        return { error: "Anda tidak punya akses untuk menambah produk.", fieldErrors: {}, values };
-    }
+  if (!canManageProducts(tenant)) {
+    return { error: "Anda tidak punya akses untuk menambah barang.", fieldErrors: {}, values };
+  }
+  if (!values.categoryId) {
+    return { error: null, fieldErrors: { categoryId: "Pilih kategori dulu." }, values };
+  }
 
-    const parsed = createProductSchema.safeParse({
-        ...toProductInput(values),
-        initialStock: parseWholeNumber(values.initialStock) ?? 0,
+  const category = await getCategory(tenant.tenantId, values.categoryId);
+  if (!category) return { error: "Kategori tidak ditemukan.", fieldErrors: {}, values };
+  if (!category.isActive) return { error: "Kategori sudah nonaktif.", fieldErrors: {}, values };
+
+  const parsed = createProductSchema.safeParse({
+    ...toNumericInput(values),
+    formType: category.formType,
+    stock: parseWholeNumber(values.stock ?? "") ?? undefined,
+  });
+  if (!parsed.success) return { error: null, fieldErrors: toFieldErrors(parsed.error), values };
+
+  const data = parsed.data;
+  const productId = crypto.randomUUID();
+
+  await db.transaction(async (tx) => {
+    await tx.insert(products).values({
+      id: productId,
+      tenantId: tenant.tenantId,
+      categoryId: data.categoryId,
+      createdBy: tenant.userId,
+      ...toProductColumns(data),
     });
-    if (!parsed.success) return { error: null, fieldErrors: toFieldErrors(parsed.error), values };
 
-    const data = parsed.data;
-    const productId = crypto.randomUUID();
+    // Isi Stok = N → buat N unit ber-SN kosong, siap diisi di Kelola Unit.
+    const units = Array.from({ length: data.stock }, () => ({
+      id: crypto.randomUUID(),
+      tenantId: tenant.tenantId,
+      productId,
+      costPrice: data.costPrice, // modal awal per unit (bisa diedit di Kelola Unit)
+      priceSetor: data.sellPrice,
+      priceOfficial: data.sellPrice,
+      enteredAt: new Date(),
+    }));
+    await tx.insert(productUnits).values(units);
+  });
 
-    try {
-        await db.transaction(async (tx) => {
-            await tx.insert(products).values({
-                id: productId,
-                tenantId: tenant.tenantId,
-                sku: data.sku || null,
-                name: data.name,
-                unit: data.unit,
-                costPrice: data.costPrice,
-                sellPrice: data.sellPrice,
-                stock: data.initialStock,
-                minStock: data.minStock,
-            });
-
-            if (data.initialStock > 0) {
-                await tx.insert(stockMovements).values({
-                    id: crypto.randomUUID(),
-                    tenantId: tenant.tenantId,
-                    productId,
-                    type: "IN",
-                    quantityChange: data.initialStock,
-                    stockAfter: data.initialStock,
-                    note: "Stok awal",
-                    createdBy: tenant.userId,
-                });
-            }
-        });
-    } catch (error) {
-        if (isDuplicateEntryError(error)) return { error: null, fieldErrors: SKU_TAKEN_ERROR, values };
-        throw error;
-    }
-
-    revalidatePath(`/toko/${tenant.tenantSlug}`, "layout");
-    return {
-        error: null,
-        fieldErrors: {},
-        values: EMPTY_PRODUCT_VALUES,
-        successMessage: `${data.name} berhasil ditambahkan.`,
-    };
+  revalidatePath(`/toko/${tenant.tenantSlug}`, "layout");
+  return {
+    error: null,
+    fieldErrors: {},
+    values: {},
+    successMessage: `${data.name} ditambahkan dengan ${data.stock} unit.`,
+  };
 }
 
 export async function updateProductAction(
-    _prevState: UpdateProductState,
-    formData: FormData,
+  _prev: UpdateProductState,
+  formData: FormData,
 ): Promise<UpdateProductState> {
-    const tenant = await requireTenant(readField(formData, "slug"));
-    const values = readProductFieldValues(formData);
+  const tenant = await requireTenant(readField(formData, "slug"));
+  const values = readProductValues(formData);
+  const productId = readField(formData, "productId");
 
-    if (!canManageProducts(tenant)) {
-        return { error: "Anda tidak punya akses untuk mengubah produk.", fieldErrors: {}, values };
-    }
+  if (!canManageProducts(tenant)) {
+    return { error: "Anda tidak punya akses untuk mengubah barang.", fieldErrors: {}, values };
+  }
 
-    const parsed = updateProductSchema.safeParse({
-        ...toProductInput(values),
-        productId: readField(formData, "productId"),
-    });
-    if (!parsed.success) {
-        const fieldErrors = toFieldErrors(parsed.error);
-        if (fieldErrors.productId) return { error: "Produk tidak ditemukan.", fieldErrors: {}, values };
-        return { error: null, fieldErrors, values };
-    }
+  const [existing] = await db
+    .select({ categoryId: products.categoryId })
+    .from(products)
+    .where(and(eq(products.tenantId, tenant.tenantId), eq(products.id, productId)))
+    .limit(1);
+  if (!existing) return { error: "Barang tidak ditemukan.", fieldErrors: {}, values };
 
-    const { productId, ...data } = parsed.data;
-    const filter = productFilter(tenant.tenantId, productId);
+  const category = await getCategory(tenant.tenantId, existing.categoryId);
+  if (!category) return { error: "Kategori barang tidak ditemukan.", fieldErrors: {}, values };
 
-    const [existing] = await db.select({ id: products.id }).from(products).where(filter).limit(1);
-    if (!existing) return { error: "Produk tidak ditemukan.", fieldErrors: {}, values };
+  const parsed = updateProductSchema.safeParse({
+    ...toNumericInput(values),
+    categoryId: existing.categoryId,
+    formType: category.formType,
+    productId,
+  });
+  if (!parsed.success) {
+    const fieldErrors = toFieldErrors(parsed.error);
+    if (fieldErrors.productId) return { error: "Barang tidak ditemukan.", fieldErrors: {}, values };
+    return { error: null, fieldErrors, values };
+  }
 
-    try {
-        await db
-            .update(products)
-            .set({ ...data, sku: data.sku || null })
-            .where(filter);
-    } catch (error) {
-        if (isDuplicateEntryError(error)) return { error: null, fieldErrors: SKU_TAKEN_ERROR, values };
-        throw error;
-    }
+  const data = parsed.data;
+  await db
+    .update(products)
+    .set(toProductColumns(data))
+    .where(and(eq(products.tenantId, tenant.tenantId), eq(products.id, productId)));
 
-    revalidatePath(`/toko/${tenant.tenantSlug}`, "layout");
-    return { error: null, fieldErrors: {}, values, successMessage: `${data.name} berhasil diperbarui.` };
+  revalidatePath(`/toko/${tenant.tenantSlug}`, "layout");
+  return { error: null, fieldErrors: {}, values, successMessage: `${data.name} diperbarui.` };
 }
 
 export async function setProductActiveAction(
-    _prevState: ProductActionState,
-    formData: FormData,
+  _prev: ProductActionState,
+  formData: FormData,
 ): Promise<ProductActionState> {
-    const tenant = await requireTenant(readField(formData, "slug"));
-    if (!canManageProducts(tenant)) {
-        return { error: "Anda tidak punya akses untuk mengarsipkan produk." };
-    }
+  const tenant = await requireTenant(readField(formData, "slug"));
+  if (!canManageProducts(tenant)) {
+    return { error: "Anda tidak punya akses untuk mengarsipkan barang." };
+  }
 
-    const parsed = productActiveSchema.safeParse({
-        productId: readField(formData, "productId"),
-        active: readField(formData, "active"),
-    });
-    if (!parsed.success) return { error: "Produk tidak ditemukan." };
+  const parsed = productActiveSchema.safeParse({
+    productId: readField(formData, "productId"),
+    active: readField(formData, "active"),
+  });
+  if (!parsed.success) return { error: "Barang tidak ditemukan." };
 
-    const { productId, active } = parsed.data;
-    const filter = productFilter(tenant.tenantId, productId);
+  const { productId, active } = parsed.data;
+  const filter = and(eq(products.tenantId, tenant.tenantId), eq(products.id, productId));
 
-    const [existing] = await db.select({ name: products.name }).from(products).where(filter).limit(1);
-    if (!existing) return { error: "Produk tidak ditemukan." };
+  const [existing] = await db.select({ name: products.name }).from(products).where(filter).limit(1);
+  if (!existing) return { error: "Barang tidak ditemukan." };
 
-    await db.update(products).set({ isActive: active }).where(filter);
+  await db.update(products).set({ isActive: active }).where(filter);
 
-    revalidatePath(`/toko/${tenant.tenantSlug}`, "layout");
-    return {
-        error: null,
-        successMessage: active ? `${existing.name} diaktifkan kembali.` : `${existing.name} diarsipkan.`,
-    };
+  revalidatePath(`/toko/${tenant.tenantSlug}`, "layout");
+  return {
+    error: null,
+    successMessage: active ? `${existing.name} diaktifkan kembali.` : `${existing.name} diarsipkan.`,
+  };
 }

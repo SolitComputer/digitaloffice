@@ -1,4 +1,4 @@
-import type { StockMovementType, TenantRole } from "@/db/schema"; 
+import type { TenantRole } from "@/db/schema";
 import type { TenantContext } from "@/modules/tenants/context";
 
 export const PERMISSION_GROUPS = [
@@ -124,13 +124,6 @@ export function canManageMembers(ctx: PermissionHolder): boolean {
 
 export function canManageProducts(ctx: PermissionHolder): boolean {
   return hasPermission(ctx, "inventory.manage");
-}
-
-export function getAllowedMovementTypes(ctx: PermissionHolder): StockMovementType[] {
-  const types: StockMovementType[] = [];
-  if (hasPermission(ctx, "inventory.stock")) types.push("IN", "OUT");
-  if (hasPermission(ctx, "inventory.manage")) types.push("ADJUST");
-  return types;
 }
 
 export function canManagePermissions(ctx: Pick<TenantContext, "role">): boolean {
