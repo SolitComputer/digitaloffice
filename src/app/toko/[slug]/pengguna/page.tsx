@@ -15,11 +15,18 @@ import {
 import { formatDate } from "@/lib/format";
 import { readParam } from "@/lib/search-params";
 import { cn } from "@/lib/utils";
+import { MemberPermissionsDialog } from "@/modules/members/components/member-permissions-dialog";
 import { MemberRowActions } from "@/modules/members/components/member-row-actions";
 import { getMemberMessage } from "@/modules/members/messages";
 import { listMembers } from "@/modules/members/queries";
 import { requireTenant } from "@/modules/tenants/context";
-import { canManageMembers, canViewMembers } from "@/modules/tenants/permissions";
+import {
+    canManageMembers,
+    canManagePermissions,
+    canViewMembers,
+    getDefaultPermissions,
+    parseStoredPermissions,
+} from "@/modules/tenants/permissions";
 import { canManageRole, getAssignableRoles, ROLE_LABELS } from "@/modules/tenants/roles";
 
 export const metadata: Metadata = {
@@ -37,6 +44,7 @@ export default async function MembersPage({ params, searchParams }: MembersPageP
     if (!canViewMembers(tenant)) notFound();
 
     const canManage = canManageMembers(tenant);
+    const canPermissions = canManagePermissions(tenant);
     const roleOptions = getAssignableRoles(tenant.role).map((role) => ({ value: role, label: ROLE_LABELS[role] }));
     const members = await listMembers(tenant);
     const message = getMemberMessage(readParam(query.pesan));
@@ -119,12 +127,28 @@ export default async function MembersPage({ params, searchParams }: MembersPageP
                                                     {isLocked ? (
                                                         <p className="text-right text-xs text-muted-foreground">—</p>
                                                     ) : (
-                                                        <MemberRowActions
+                                                                                                                <MemberRowActions
                                                             slug={tenant.tenantSlug}
                                                             userId={member.userId}
                                                             name={member.name}
                                                             role={member.role}
                                                             roleOptions={roleOptions}
+                                                            extraAction={
+                                                                canPermissions && member.role !== "OWNER" ? (
+                                                                    <MemberPermissionsDialog
+                                                                        slug={tenant.tenantSlug}
+                                                                        userId={member.userId}
+                                                                        name={member.name}
+                                                                        roleLabel={ROLE_LABELS[member.role]}
+                                                                        defaultPermissions={[...getDefaultPermissions(member.role)]}
+                                                                        customPermissions={
+                                                                            member.permissions !== null
+                                                                                ? parseStoredPermissions(member.permissions)
+                                                                                : null
+                                                                        }
+                                                                    />
+                                                                ) : undefined
+                                                            }
                                                         />
                                                     )}
                                                 </TableCell>

@@ -10,11 +10,14 @@ export function getTenantNav(tenant: TenantContext): NavItem[] {
     items.push({ href: `${base}/inventory`, label: "Inventory", icon: "inventory" });
   }
 
-  items.push(
-    { href: `${base}/absensi`, label: "Absensi", icon: "attendance", disabled: true },
-    { href: `${base}/cashflow`, label: "Cashflow", icon: "cashflow", disabled: true },
-  );
+  if (hasPermission(tenant, "attendance.view")) {
+    items.push({ href: `${base}/absensi`, label: "Absensi", icon: "attendance" });
+  }
 
+  if (hasPermission(tenant, "cashflow.view")) {
+    items.push({ href: `${base}/cashflow`, label: "Cashflow", icon: "cashflow" });
+  }
+  
   if (canViewMembers(tenant)) {
     items.push({ href: `${base}/pengguna`, label: "Pengguna", icon: "users" });
   }

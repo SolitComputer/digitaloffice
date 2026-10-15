@@ -129,9 +129,44 @@ export async function createMemberAction(
     }
 
     const emailTakenError = { error: null, fieldErrors: { email: "Email sudah terdaftar di DigitalOffice" }, values };
+    const alreadyMemberError = { error: null, fieldErrors: { email: "Email ini sudah menjadi anggota toko ini." }, values };
 
-    const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, data.email)).limit(1);
-    if (existing) return emailTakenError;
+    const [existing] = await db
+        .select({ id: users.id, name: users.name })
+        .from(users)
+        .where(eq(users.email, data.email))
+        .limit(1);
+
+    if (existing) {
+        // Akun sudah ada (mis. pernah dicabut dari toko ini). Jangan bikin akun baru —
+        // cukup pasang ulang keanggotaan ke toko ini (pakai akun & password lama).
+        const [member] = await db
+            .select({ userId: tenantMembers.userId })
+            .from(tenantMembers)
+            .where(and(eq(tenantMembers.tenantId, tenant.tenantId), eq(tenantMembers.userId, existing.id)))
+            .limit(1);
+
+        if (member) return alreadyMemberError;
+
+        try {
+            await db.insert(tenantMembers).values({
+                tenantId: tenant.tenantId,
+                userId: existing.id,
+                role: data.role,
+            });
+        } catch (error) {
+            if (isDuplicateEntryError(error)) return alreadyMemberError;
+            throw error;
+        }
+
+        revalidatePath(`/toko/${tenant.tenantSlug}`, "layout");
+        return {
+            error: null,
+            fieldErrors: {},
+            values: { name: "", email: "", role: "STAFF" },
+            successMessage: `${existing.name} ditambahkan kembali ke toko ini.`,
+        };
+    }
 
     const account = await buildCredentialUserRows({
         name: data.name,

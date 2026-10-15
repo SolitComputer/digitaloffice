@@ -9,12 +9,9 @@ type StatCardProps = {
   index?: number;
 };
 
-export function StatCard({ label, value, hint, icon, index = 0 }: StatCardProps) {
+export function StatCard({ label, value, hint, icon }: StatCardProps) {
   return (
-    <Card
-      className="gap-0 py-5 transition-all duration-200 animate-in fade-in-0 slide-in-from-bottom-2 fill-mode-both hover:-translate-y-0.5 hover:shadow-md motion-reduce:animate-none motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-      style={{ animationDelay: `${index * 60}ms` }}
-    >
+    <Card className="gap-0 py-5 transition-shadow duration-200 hover:shadow-md">
       <CardContent className="flex items-start justify-between gap-4">
         <div className="min-w-0 space-y-1">
           <p className="text-sm font-medium text-muted-foreground">{label}</p>

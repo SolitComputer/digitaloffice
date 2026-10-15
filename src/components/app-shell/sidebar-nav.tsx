@@ -48,7 +48,7 @@ export function SidebarNav({ items, onNavigate }: SidebarNavProps) {
               "before:absolute before:inset-y-1.5 before:left-0 before:w-1 before:rounded-full before:bg-primary before:transition-all before:duration-200",
               isActive
                 ? "bg-primary/10 text-primary before:opacity-100"
-                : "text-muted-foreground before:scale-y-0 before:opacity-0 hover:translate-x-0.5 hover:bg-muted hover:text-foreground",
+                : "text-muted-foreground before:scale-y-0 before:opacity-0 hover:bg-muted hover:text-foreground",
             )}
           >
             <Icon className="size-4" />

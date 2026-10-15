@@ -7,8 +7,17 @@ export const PERMISSION_GROUPS = [
     description: "Halaman yang boleh dibuka. Kalau dimatikan, menu hilang dari sidebar.",
     permissions: [
       { key: "inventory.view", label: "Inventory" },
+      { key: "attendance.view", label: "Absensi" },
+      { key: "cashflow.view", label: "Cashflow" },
       { key: "members.view", label: "Pengguna" },
       { key: "settings.view", label: "Pengaturan" },
+    ],
+  },
+  {
+    label: "Absensi",
+    description: "Aksi di halaman Absensi.",
+    permissions: [
+      { key: "attendance.manage", label: "Kelola & koreksi absensi karyawan", requires: "attendance.view" },
     ],
   },
   {
@@ -17,6 +26,13 @@ export const PERMISSION_GROUPS = [
     permissions: [
       { key: "inventory.stock", label: "Catat stok masuk / keluar", requires: "inventory.view" },
       { key: "inventory.manage", label: "Tambah, edit & arsip produk", requires: "inventory.view" },
+    ],
+  },
+  {
+    label: "Cashflow",
+    description: "Aksi di halaman Cashflow.",
+    permissions: [
+      { key: "cashflow.manage", label: "Tambah/hapus transaksi & kelola kategori", requires: "cashflow.view" },
     ],
   },
   {
@@ -64,9 +80,9 @@ export function getDependentPermissions(permission: Permission): Permission[] {
 
 const ROLE_DEFAULT_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
   OWNER: ALL_PERMISSIONS,
-  MANAGER: ["inventory.view", "inventory.stock", "inventory.manage", "members.view", "settings.view"],
-  KASIR: ["inventory.view", "inventory.stock"],
-  STAFF: ["inventory.view"],
+  MANAGER: ["inventory.view", "inventory.stock", "inventory.manage", "attendance.view", "attendance.manage", "cashflow.view", "cashflow.manage", "members.view", "settings.view"],
+    KASIR: ["inventory.view", "inventory.stock", "attendance.view"],
+  STAFF: ["inventory.view", "attendance.view"],
 };
 
 function isPermission(value: string): value is Permission {
@@ -126,6 +142,18 @@ export function canManageProducts(ctx: PermissionHolder): boolean {
   return hasPermission(ctx, "inventory.manage");
 }
 
+export function canManageAttendance(ctx: PermissionHolder): boolean {
+  return hasPermission(ctx, "attendance.manage");
+}
+
 export function canManagePermissions(ctx: Pick<TenantContext, "role">): boolean {
   return ctx.role === "SUPER_ADMIN";
+}
+
+export function canViewCashflow(ctx: PermissionHolder): boolean {
+  return hasPermission(ctx, "cashflow.view");
+}
+
+export function canManageCashflow(ctx: PermissionHolder): boolean {
+  return hasPermission(ctx, "cashflow.manage");
 }

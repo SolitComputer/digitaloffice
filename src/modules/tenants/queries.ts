@@ -28,3 +28,22 @@ export async function resolveHomePath(userId: string): Promise<string> {
   const [firstMembership] = await getActiveMemberships(userId);
   return firstMembership ? `/toko/${firstMembership.slug}` : "/tanpa-akses";
 }
+
+
+export async function getTenantSettings(tenantId: string) {
+  const [row] = await db
+    .select({
+      name: tenants.name,
+      workStartTime: tenants.workStartTime,
+      workEndTime: tenants.workEndTime,
+      faceRequired: tenants.faceRequired,
+      gpsRequired: tenants.gpsRequired,
+      gpsLat: tenants.gpsLat,
+      gpsLng: tenants.gpsLng,
+      gpsRadius: tenants.gpsRadius,
+    })
+    .from(tenants)
+    .where(eq(tenants.id, tenantId))
+    .limit(1);
+  return row ?? null;
+}

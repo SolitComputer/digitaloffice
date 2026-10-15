@@ -4,3 +4,5 @@ export * from "./tenant-members";
 export * from "./login-attempts";
 export * from "./two-factor";
 export * from "./inventory";
+export * from "./attendance";
+export * from "./cashflow";
